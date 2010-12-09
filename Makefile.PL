@@ -18,6 +18,8 @@ requires 'File::HomeDir';
 requires 'Path::Class';
 requires 'MooseX::Types::LoadableClass';
 
+test_requires 'Test::More' => '0.88';
+
 install_script 'script/tail_rabbit';
 
 WriteAll();
