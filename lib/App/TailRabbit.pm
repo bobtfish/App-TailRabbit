@@ -12,6 +12,8 @@ use Path::Class qw/ file /;
 use MooseX::Types::LoadableClass qw/ LoadableClass /;
 use namespace::autoclean;
 
+our $VERSION = '0.001';
+
 with qw/
     MooseX::Getopt
     MooseX::ConfigFromFile
@@ -150,4 +152,46 @@ sub notify {
 
 __PACKAGE__->meta->make_immutable;
 1;
+
+=head1 NAME
+
+App::TailRabbit - Listen to a RabbitMQ exchange and emit the messages to console.
+
+=head1 SYNOPSIS
+
+    tail_reabbit --exchange_name firehose --routing_key # --rabbitmq_user guest --rabbitmq_user guest --rabbitmq_host localhost
+
+=head1 DESCRIPTION
+
+Simple module to consume messages from a RabitMQ message queue.
+
+=head1 BUGS
+
+=over
+
+=item Virtually no docs
+
+=item Creates all exchanges as durable.
+
+=item Always creates exchange if it doesn't exist
+
+=item Probably several more
+
+=back
+
+=head1 SEE ALSO
+
+L<Net::RabbitFoot>
+
+=head1 AUTHOR
+
+Tomas (t0m) Doran C<< <bobtfish@bobtfish.net> >>.
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright the above author(s).
+
+Licensed under the same terms as perl itself.
+
+=cut
 
