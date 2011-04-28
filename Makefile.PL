@@ -22,5 +22,11 @@ test_requires 'Test::More' => '0.88';
 
 install_script 'script/tail_rabbit';
 
+resources repository => 'git://github.com/bobtfish/App-TailRabbit.git';
+
+if ($Module::Install::AUTHOR) {
+    system("pod2text lib/App/TailRabbit.pm > README") and die $!;
+}
+
 WriteAll();
 
