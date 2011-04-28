@@ -11,6 +11,7 @@ requires 'MooseX::Types::Moose';
 requires 'namespace::autoclean';
 requires 'MooseX::Getopt';
 requires 'Net::RabbitFoot' => '1.03';
+requires 'AnyEvent::RabbitMQ' => '1.03'; # FIXME - Should be required in Net::RabbitFoot
 requires 'MooseX::Types::Common';
 requires 'AnyEvent';
 requires 'YAML';
