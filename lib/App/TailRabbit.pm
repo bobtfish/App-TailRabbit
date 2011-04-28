@@ -73,9 +73,7 @@ has 'configfile' => (
 
 my $rf = Net::RabbitFoot->new(
 #        verbose => 1,
-)->load_xml_spec(
-    Net::RabbitFoot::default_amqp_spec(),
-);
+)->load_xml_spec();
 
 sub _get_mq {
     my $self = shift;

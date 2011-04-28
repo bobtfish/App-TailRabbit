@@ -10,7 +10,7 @@ requires 'Moose';
 requires 'MooseX::Types::Moose';
 requires 'namespace::autoclean';
 requires 'MooseX::Getopt';
-requires 'Net::RabbitFoot';
+requires 'Net::RabbitFoot' => '1.03';
 requires 'MooseX::Types::Common';
 requires 'AnyEvent';
 requires 'YAML';
