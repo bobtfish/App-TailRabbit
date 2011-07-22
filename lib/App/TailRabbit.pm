@@ -3,7 +3,7 @@ use Moose;
 use MooseX::Getopt;
 use Net::RabbitFoot;
 use Data::Dumper;
-use MooseX::Types::Moose qw/ ArrayRef Object /;
+use MooseX::Types::Moose qw/ ArrayRef Object Bool /;
 use MooseX::Types::Common::String qw/ NonEmptySimpleStr /;
 use AnyEvent;
 use YAML qw/LoadFile/;
@@ -58,6 +58,18 @@ has _convertor => (
         shift->convertor->new
     },
     handles => [qw/ convert /],
+);
+
+has exchange_type => (
+    is => 'ro',
+    isa => NonEmptySimpleStr,
+    default => 'topic',
+);
+
+has durable => (
+    is => 'ro',
+    isa => Bool,
+    default => 0,
 );
 
 sub get_config_from_file {
@@ -116,12 +128,15 @@ sub _bind_anon_queue {
 
 sub _get_channel {
     my ($self, $rf) = @_;
-    my $ch = $rf->open_channel();
-    my $exch_frame = $ch->declare_exchange(
-        type => 'topic',
-        durable => 1,
+    my $ch = $rf->open_channel(
+        on_close => sub { warn("Channel closed - wrong exchange options!\n"); exit; },
+    );
+    my $reply = $ch->declare_exchange(
+        type => $self->exchange_type,
+        durable => $self->durable,
         exchange => $self->exchange_name,
-    )->method_frame;
+    );
+    my $exch_frame = $reply->method_frame;
     die Dumper($exch_frame) unless blessed $exch_frame and $exch_frame->isa('Net::AMQP::Protocol::Exchange::DeclareOk');
     return $ch;
 }
