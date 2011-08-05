@@ -12,7 +12,7 @@ use Path::Class qw/ file /;
 use MooseX::Types::LoadableClass qw/ LoadableClass /;
 use namespace::autoclean;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 with qw/
     MooseX::Getopt
