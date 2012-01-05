@@ -1,7 +1,7 @@
 package App::TailRabbit;
 use Moose;
 use MooseX::Getopt;
-use Net::RabbitFoot;
+use AnyEvent::RabbitMQ;
 use Data::Dumper;
 use MooseX::Types::Moose qw/ ArrayRef Object Bool /;
 use MooseX::Types::Common::String qw/ NonEmptySimpleStr /;
@@ -83,12 +83,13 @@ has 'configfile' => (
     is => 'bare',
 );
 
-my $rf = Net::RabbitFoot->new(
-#        verbose => 1,
+my $rf = AnyEvent::RabbitMQ->new(
+#       verbose => 1,
 )->load_xml_spec();
 
 sub _get_mq {
     my $self = shift;
+    my $cv = AnyEvent->condvar;
     $rf->connect(
         host => $self->rabbitmq_host,
         port => 5672,
@@ -104,52 +105,66 @@ sub _get_mq {
         on_failure => sub {
             die("Failed to connect to mq");
         },
+        on_success => sub { $cv->send},
     );
+    $cv->recv;
     return $rf;
 }
 
 sub _bind_anon_queue {
     my ($self, $ch) = @_;
-    my $queue_frame = $ch->declare_queue(
-        auto_delete => 1,
-        exclusive => 1,
-    )->method_frame;
-    my @keys = @{ $self->routing_key };
-    push(@keys, "#") unless scalar @keys;
-    foreach my $key (@keys) {
-        my $bind_frame = $ch->bind_queue(
-            queue => $queue_frame->queue,
-            exchange => $self->exchange_name,
-            routing_key => $key,
-        )->method_frame;
-        die Dumper($bind_frame) unless blessed $bind_frame and $bind_frame->isa('Net::AMQP::Protocol::Queue::BindOk');
-    }
+    $ch->declare_queue(
+        queue => $self->exchange_name,
+#        auto_delete => 1,
+#        exclusive => 1,
+        durable => $self->durable,
+        on_success => sub {
+            my $queue_frame = shift;
+            my @keys = @{ $self->routing_key };
+            push(@keys, "#") unless scalar @keys;
+            foreach my $key (@keys) {
+                $ch->bind_queue(
+                    queue => $queue_frame->method_frame->queue,
+                    exchange => $self->exchange_name,
+                    routing_key => $key,
+                );
+            }
+        },
+    );
 }
 
 sub _get_channel {
     my ($self, $rf) = @_;
-    my $ch = $rf->open_channel(
+    my $cv = AnyEvent->condvar;
+    $rf->open_channel(
         on_close => sub { warn("Channel closed - wrong exchange options!\n"); exit; },
+    
+        on_success => sub {
+            my $ch = shift;
+            $ch->declare_exchange(
+            type => $self->exchange_type,
+            durable => $self->durable,
+            exchange => $self->exchange_name,
+            on_success => sub {
+                my $reply = shift;
+                my $exch_frame = $reply->method_frame;
+                die Dumper($exch_frame) unless blessed $exch_frame and $exch_frame->isa('Net::AMQP::Protocol::Exchange::DeclareOk');
+                $cv->send($ch);
+            });
+        },
     );
-    my $reply = $ch->declare_exchange(
-        type => $self->exchange_type,
-        durable => $self->durable,
-        exchange => $self->exchange_name,
-    );
-    my $exch_frame = $reply->method_frame;
-    die Dumper($exch_frame) unless blessed $exch_frame and $exch_frame->isa('Net::AMQP::Protocol::Exchange::DeclareOk');
-    return $ch;
+    my $ch = $cv->recv;
 }
 
 sub run {
     my $self = shift;
+    my $done = AnyEvent->condvar;
     my $ch = $self->_get_channel($self->_get_mq);
     $self->_bind_anon_queue($ch);
-    my $done = AnyEvent->condvar;
     $ch->consume(
         on_consume => sub {
             my $message = shift;
-            my $payload = $self->convert($message->{body}->payload);
+            my $payload = $message->{body}->payload;
             my $routing_key = $message->{deliver}->method_frame->routing_key;
             $self->notify($payload, $routing_key, $message);
         },
